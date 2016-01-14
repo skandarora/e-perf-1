@@ -4,6 +4,57 @@
 df.original <- read.csv(file = "HMXPC13_DI_v2_5-14-14.csv", header = TRUE, sep=",", dec=".",
                         na.strings = c("Not Available", NA, "")) # 641138 enrollers
 
+## Adding extra column for continent
+n.america <- df.original$final_cc_cname_DI %in% c("United States",
+                                                  "Mexico", 
+                                                  "Canada", 
+                                                  "Other North & Central Amer., Caribbean")
+
+africa <- df.original$final_cc_cname_DI %in% c("Other Africa",
+                                                  "Nigeria",
+                                                  "Egypt",
+                                                  "Morocco")
+
+
+europe <- df.original$final_cc_cname_DI %in% c("France",  
+                                               "Other Europe",
+                                               "Germany", 
+                                               "Poland",
+                                               "United Kingdom",  
+                                               "Spain", 
+                                               "Greece",
+                                               "Portugal")
+
+
+s.america <- df.original$final_cc_cname_DI %in% c("Colombia",
+                                               "Brazil",  
+                                               "Other South America")
+
+oceania <- df.original$final_cc_cname_DI %in% c("Australia",
+                                                  "Other Oceania")
+
+asia <- df.original$final_cc_cname_DI %in% c("India",
+                                                "Russian Federation",
+                                                "Other South Asia",
+                                                "Asia",
+                                                "Other Middle East/Central Asia",
+                                                "Indonesia", 
+                                                "Other East Asia",
+                                                "Bangladesh", 
+                                                "China",
+                                                "Ukraine",
+                                                "Pakistan", 
+                                                "Philippines")
+
+df.original$d_continent[n.america] <- "N.America"
+df.original$d_continent[s.america] <- "S.America"
+df.original$d_continent[asia] <- "Asia"
+df.original$d_continent[europe] <- "Europe"
+df.original$d_continent[oceania] <- "Oceania"
+df.original$d_continent[africa] <- "Africa"
+
+rm(africa,asia,europe,n.america,s.america,oceania)
+
 ## Splitting 'course_id' into 3 parts
 split <- data.frame(do.call('rbind', strsplit(as.character(df.original$course_id),"/", fixed = TRUE))) #New 3 columns
 df.original_1 <- cbind(split, subset(df.original, select=-c(course_id))) # New 3 columns cbinded with old data
@@ -112,6 +163,7 @@ mit$d_age <- as.numeric(format(mit$start_time_DI,"%Y")) - as.numeric(mit$YoB)
 #14.73x - Spring - 12/Feb/13
 #8.02x - Spring - 18/Feb/13
 #7.00x - Spring -  5/Mar/13
+
 #2.01x - Spring - 15/Apr/13
 #8.MReV - Summer - 1/Jun/13
 mit$d_courseLaunchDate[mit$course == "6.002x" & mit$semester == "2012_Fall"] <-"2012-09-05"
@@ -170,6 +222,22 @@ mit$d_timeDiff_LastInteraction <- mit$d_courseWrapDate - mit$last_event_DI
 mit$d_explored <- ifelse(mit$explored == 1, "explored", "not explored")
 mit$d_viewed <- ifelse(mit$viewed == 1, "vieweded", "not viewed")
 mit$d_certified <- ifelse(mit$certified == 1, "certified", "not certified")
+
+# nevents outlier capped at max 
+# n = dim(mit)[1] #Total rows
+# row <- which(mit$nevents == max(mit$nevents))
+# mit[row, "nevents"] <- sort(mit$nevents, partial=n-1 )[n-1] # Replacing with 2nd largest
+# rm(n,row)
+# nevents outlier capped at 99.9th percentile(16,975)
+mit$nevents[mit$nevents > quantile(mit$nevents, 0.999)] <- quantile(mit$nevents, 0.999)
+
+
+
+# nplay_video outliers capped at 10,000
+n = dim(mit)[1] #Total rows
+row <- which(mit$nplay_video > 10000)
+mit[row, "nplay_video"] <- 10000 # Replacing with 2nd largest
+rm(n,row)
 
 
 ## --------------------------------------Harvard DP--------------------------------------------
@@ -235,6 +303,10 @@ bad <- is.na(harvard$ndays_act)
 harvard[bad,"ndays_act"] <- 0 # Others replaced by 0
 rm(bad, bad2)
 
+# nevents outlier capped at 99.9th percentile(16,975)
+harvard$nevents[harvard$nevents > quantile(harvard$nevents, 0.999)] <- quantile(harvard$nevents, 0.999)
+
+
 
 ## Replacing NA in last_event by corresponding start_time_DI
 bad <- is.na(harvard$last_event_DI)
@@ -299,6 +371,5 @@ harvard$d_timeDiff_LastInteraction <- harvard$d_courseWrapDate - harvard$last_ev
 harvard$d_explored <- ifelse(harvard$explored == 1, "explored", "not explored")
 harvard$d_viewed <- ifelse(harvard$viewed == 1, "vieweded", "not viewed")
 harvard$d_certified <- ifelse(harvard$certified == 1, "certified", "not certified")
-
 
 
